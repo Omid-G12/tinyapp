@@ -41,17 +41,26 @@ const findUser = function(input) {
   return null;
 };
 
+const findPass = function(input) {
+  let keys = Object.keys(users);
+  for (let key of keys) {
+    if (users[key].password === input) {
+      return users[key];
+    }
+  }
+  return null;
+};
+
 app.get("/", (req, res) => {
   res.redirect("/urls");
-  //console.log(req.body.username)
 });
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
+app.get("/big", (req, res) => {
+  res.send("True!");
 });
 
 app.get("/register", (req, res) => {
@@ -92,6 +101,14 @@ app.get("/u/:id", (req, res) => {
   res.redirect(longURL);
 });
 
+app.get("/login", (req, res) => {
+  const templateVars = { 
+    user: users[req.cookies["user_id"]],
+    //urls: urlDatabase
+  };
+  res.render("login", templateVars);
+});
+
 app.post("/urls", (req, res) => {
   console.log(req); // Log the POST request body to the console
   let id = generateRandomString();
@@ -112,13 +129,23 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  //console.log(req.body.username);
-  res.cookie('username', req.body.username);
-  res.redirect("/urls");
+  let newUser = findUser(req.body.email);
+  let newPass = findPass(req.body.password);
+  if (newUser && newPass) {
+    //console.log(newUser);
+    res.cookie('user_id', newUser.id);
+    res.redirect("/urls");
+  } else if (!newUser) {
+    res.statusCode = 403;
+    res.send("403: invalid email address!");
+  } else if (newUser && !newPass) {
+    res.statusCode = 403;
+    res.send("403: invalid password!");
+  } 
+  
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('username', req.body.username);
   res.clearCookie('user_id', req.body['user_id']);
   res.redirect("/urls");
 });
@@ -135,7 +162,7 @@ app.post("/register", (req, res) => {
   let newUser = findUser(req.body.email);
   //console.log(newUser);
   if (newUser) {
-    res.send("400 duplicate email!");
+    res.send("400 email already exists!");
     res.statusCode = 400;
   } else {
     const random = generateRandomString();
@@ -153,7 +180,7 @@ app.post("/register", (req, res) => {
 });
 
 app.get("*", (req, res) => {
-  res.write("404 not found!")
+  res.send("404 not found!")
 });
 
 app.listen(PORT, () => {
