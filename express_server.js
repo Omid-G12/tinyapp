@@ -19,7 +19,8 @@ const urlDatabase = {
 };
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect("/urls");
+  //console.log(req.body.username)
 });
 
 app.get("/urls.json", (req, res) => {
