@@ -31,17 +31,25 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = { 
+    username: req.cookies["username"],
+    urls: urlDatabase
+  };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars = {
+    username: req.cookies["username"]
+  };
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:id", (req, res) => {
   //console.log(req.body);
-  const templateVars = { id: req.params.id, longURL: urlDatabase[(req.params.id)] };
+  const templateVars = { 
+    username: req.cookies["username"],
+    id: req.params.id, longURL: urlDatabase[(req.params.id)] };
   res.render("urls_show", templateVars);
 });
 
@@ -68,6 +76,17 @@ app.post("/urls/:id", (req, res) => {
   //console.log(req.body.newURL);
   res.redirect("/urls");
 
+});
+
+app.post("/login", (req, res) => {
+  //console.log(req.body.username);
+  res.cookie('username', req.body.username);
+  res.redirect("/urls");
+});
+
+app.post("/logout", (req, res) => {
+  res.clearCookie('username', req.body.username);
+  res.redirect("/urls");
 });
 
 app.listen(PORT, () => {
