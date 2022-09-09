@@ -14,9 +14,28 @@ app.use(morgan('dev'));
 app.use(cookieParser());
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
 };
+
+const urlsForUser = function(id) {
+  const userList = {};
+  let keys = Object.keys(urlDatabase);
+  for (let key of keys) {
+    if (urlDatabase[key].userID === id) {
+      userList[key] = {
+        longURL: urlDatabase[key].longURL,
+      };
+    }
+  }
+  return userList;
+}
 
 const users = {
   userRandomID: {
@@ -52,6 +71,12 @@ const findPass = function(input) {
 };
 
 app.get("/", (req, res) => {
+  const id = req.cookies.user_id;
+
+  if (!id) {
+    res.redirect("/login");
+  } 
+  
   res.redirect("/urls");
 });
 
@@ -64,22 +89,34 @@ app.get("/big", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  if (req.cookies["user_id"]) {
+  const id = req.cookies.user_id;
+  if (id) {
     res.redirect("/urls");
   } else {
     const templateVars = { 
-      user: users[req.cookies["user_id"]],
+      user: users[id],
     };  
     res.render("register", templateVars);
   }
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { 
-    user: users[req.cookies["user_id"]],
-    urls: urlDatabase
-  };
-  res.render("urls_index", templateVars);
+  const id = req.cookies.user_id;
+
+  const user = users[id];
+  if (!user) {
+    res.send("You must <a href='/login'>Login</a> before accessing the URLs!")
+    
+  } else {
+    const list = urlsForUser(id);
+    console.log(list);
+    const templateVars = { 
+      user: user,
+      urls: list,
+    };
+    res.render("urls_index", templateVars);
+  }
+  
 });
 
 app.get("/urls/new", (req, res) => {
@@ -97,12 +134,25 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   //console.log(req.body);
-  const templateVars = { 
-    user: users[req.cookies["user_id"]],
-    id: req.params.id, 
-    longURL: urlDatabase[req.params.id]
-  };
-  res.render("urls_show", templateVars);
+  const id = req.cookies.user_id;
+  if (id) {
+    const list = urlsForUser(id);
+    const keys = Object.keys(list);
+    if (list && keys.includes(req.params.id)) {
+      const templateVars = { 
+        user: users[id],
+        id: req.params.id, 
+        longURL: list[req.params.id].longURL,
+      };
+      res.render("urls_show", templateVars);
+    } else {
+      res.send("You do not have access to this URL! Please <a href='/login'>Login</a> or try again!")
+    }
+    
+  } else {
+    res.send("You must <a href='/login'>Login</a> before accessing the URLs!")
+  }
+  
 });
 
 app.get("/u/:id", (req, res) => {
@@ -112,19 +162,20 @@ app.get("/u/:id", (req, res) => {
     //console.log(urlDatabase[key].userID);
     console.log(req.params);
     if (key === req.params.id) {
-      const URL = urlDatabase[key];
+      const URL = urlDatabase[key].longURL;
       res.redirect(URL);
     }
   }
-  res.send("<html><body><b>Error:</b> Requested ID does not exist!</body></html>")
+  res.send("<b>Error</b>: Requested ID does not exist! ")
 });
 
 app.get("/login", (req, res) => {
-  if (req.cookies["user_id"]) {
+  const id = req.cookies.user_id;
+  if (id) {
     res.redirect("/urls");
   } else {
     const templateVars = { 
-      user: users[req.cookies["user_id"]],
+      user: users[id],
       //urls: urlDatabase
     };
     res.render("login", templateVars);
@@ -135,7 +186,10 @@ app.post("/urls", (req, res) => {
   if (req.cookies["user_id"]) {
     //console.log(req); // Log the POST request body to the console
     let id = generateRandomString();
-    urlDatabase[id] = req.body.longURL;
+    urlDatabase[id] = {
+      longURL: req.body.longURL,
+      userID: req.cookies["user_id"],
+    }
     //console.log(urlDatabase);
     res.redirect("/urls"); // Respond with 'Ok' (we will replace this)
   } else {
@@ -145,61 +199,76 @@ app.post("/urls", (req, res) => {
 });
 
 app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect("/urls");
+  const id = req.cookies.user_id;
+  if (id) {
+    const list = urlsForUser(id);
+    const keys = Object.keys(list);
+    if (list && keys.includes(req.params.id)) {
+      delete urlDatabase[req.params.id];
+      res.redirect("/urls");
+    } else {
+      res.send("You do not have access to this URL!")
+    }
+  } else {
+    res.send("You must <a href='/login'>Login</a> first before accessing this URL!")
+  }   
 });
+  
 
 app.post("/urls/:id", (req, res) => {
-  console.log(urlDatabase[req.params.id]);
-  urlDatabase[req.params.id] = req.body.newURL;
-  //console.log(req.body.newURL);
-  res.redirect("/urls");
-
+  //console.log(urlDatabase[req.params.id]);
+  const id = req.cookies.user_id;
+  if (id) {
+    const list = urlsForUser(id);
+    const keys = Object.keys(list);
+    if (list && keys.includes(req.params.id)) {
+      urlDatabase[req.params.id].longURL = req.body.newURL;
+      res.redirect("/urls");
+    } else {
+      res.send("You do not have access to this URL!")
+    }
+  } else {
+    res.send("You must <a href='/login'>Login</a> first before accessing this URL!")
+  }
 });
 
 app.post("/login", (req, res) => {
   let newUser = findUser(req.body.email);
   let newPass = findPass(req.body.password);
-  if (newUser && newPass) {
-    //console.log(newUser);
-    res.cookie('user_id', newUser.id);
-    res.redirect("/urls");
-  } else if (!newUser) {
+  if (!newUser || !newPass) {
     res.statusCode = 403;
-    res.send("403: invalid email address!");
-  } else if (newUser && !newPass) {
-    res.statusCode = 403;
-    res.send("403: invalid password!");
-  } 
-  
+    res.send("Invalid Login! Please <a href='/login'>Try Again</a>");
+  }
+  res.cookie('user_id', newUser.id);
+  res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id', req.body['user_id']);
+  const id = req.cookies.user_id;
+  res.clearCookie('user_id', id);
   res.redirect("/urls");
 });
 
 app.post("/register", (req, res) => {
-  //console.log(req.body.email);
-  //console.log(users);
-  //check if email or pass is empty
-  if (!req.body.email || !req.body.password) {
-    res.send("400!!!");
+  const email = req.body.email;
+  const password = req.body.password;
+  if (!email|| !password) {
+    res.send("Email or Password cannot be blank! Please <a href='/register'>Try Again!</a>");
     res.statusCode = 400;
   } 
   //check if email exists
-  let newUser = findUser(req.body.email);
+  let newUser = findUser(email);
   //console.log(newUser);
   if (newUser) {
-    res.send("400 email already exists!");
+    res.send("User already exists! Please <a href='/register'>Try Again!</a>");
     res.statusCode = 400;
   } else {
     const random = generateRandomString();
     //console.log(req.body.email, req.body.password);
   users[random] = {
     id: random,
-    email: req.body.email,
-    password: req.body.password
+    email: email,
+    password: password
   };
   //console.log(users[random]);
   res.cookie('user_id', users[random].id);
