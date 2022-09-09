@@ -64,10 +64,14 @@ app.get("/big", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  const templateVars = { 
-    user: users[req.cookies["user_id"]],
-  };  
-  res.render("register", templateVars);
+  if (req.cookies["user_id"]) {
+    res.redirect("/urls");
+  } else {
+    const templateVars = { 
+      user: users[req.cookies["user_id"]],
+    };  
+    res.render("register", templateVars);
+  }
 });
 
 app.get("/urls", (req, res) => {
@@ -79,41 +83,65 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { 
-    user: users[req.cookies["user_id"]],
-    //urls: urlDatabase
-  };
-  res.render("urls_new", templateVars);
+  if (req.cookies["user_id"]) {
+    const templateVars = { 
+      user: users[req.cookies["user_id"]],
+      //urls: urlDatabase
+    };
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
+  
 });
 
 app.get("/urls/:id", (req, res) => {
   //console.log(req.body);
   const templateVars = { 
     user: users[req.cookies["user_id"]],
-    id: req.params.id, longURL: urlDatabase[(req.params.id)]
+    id: req.params.id, 
+    longURL: urlDatabase[req.params.id]
   };
   res.render("urls_show", templateVars);
 });
 
 app.get("/u/:id", (req, res) => {
   //console.log(req.params.id);
-  const longURL = urlDatabase[(req.params.id)];
-  res.redirect(longURL);
+  let keys = Object.keys(urlDatabase);
+  for (let key of keys) {
+    //console.log(urlDatabase[key].userID);
+    console.log(req.params);
+    if (key === req.params.id) {
+      const URL = urlDatabase[key];
+      res.redirect(URL);
+    }
+  }
+  res.send("<html><body><b>Error:</b> Requested ID does not exist!</body></html>")
 });
 
 app.get("/login", (req, res) => {
-  const templateVars = { 
-    user: users[req.cookies["user_id"]],
-    //urls: urlDatabase
-  };
-  res.render("login", templateVars);
+  if (req.cookies["user_id"]) {
+    res.redirect("/urls");
+  } else {
+    const templateVars = { 
+      user: users[req.cookies["user_id"]],
+      //urls: urlDatabase
+    };
+    res.render("login", templateVars);
+  }
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req); // Log the POST request body to the console
-  let id = generateRandomString();
-  urlDatabase[id] = req.body.longURL;
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  if (req.cookies["user_id"]) {
+    //console.log(req); // Log the POST request body to the console
+    let id = generateRandomString();
+    urlDatabase[id] = req.body.longURL;
+    //console.log(urlDatabase);
+    res.redirect("/urls"); // Respond with 'Ok' (we will replace this)
+  } else {
+    res.send("<html><body>You must register/login before making short URLs!</body></html>\n")
+  }
+  
 });
 
 app.post("/urls/:id/delete", (req, res) => {
@@ -122,6 +150,7 @@ app.post("/urls/:id/delete", (req, res) => {
 });
 
 app.post("/urls/:id", (req, res) => {
+  console.log(urlDatabase[req.params.id]);
   urlDatabase[req.params.id] = req.body.newURL;
   //console.log(req.body.newURL);
   res.redirect("/urls");
