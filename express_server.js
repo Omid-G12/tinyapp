@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcryptjs');
 
 const generateRandomString = function() {
   return Math.random().toString(36).substring(2, 8);
@@ -62,8 +63,8 @@ const findUser = function(input) {
 
 const findPass = function(input) {
   let keys = Object.keys(users);
-  for (let key of keys) {
-    if (users[key].password === input) {
+  for (let key of keys) { 
+    if (bcrypt.compareSync(input, users[key].password)) {
       return users[key];
     }
   }
@@ -252,6 +253,7 @@ app.post("/logout", (req, res) => {
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
   if (!email|| !password) {
     res.send("Email or Password cannot be blank! Please <a href='/register'>Try Again!</a>");
     res.statusCode = 400;
@@ -268,7 +270,7 @@ app.post("/register", (req, res) => {
   users[random] = {
     id: random,
     email: email,
-    password: password
+    password: hashedPassword,
   };
   //console.log(users[random]);
   res.cookie('user_id', users[random].id);
