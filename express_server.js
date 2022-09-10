@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
+const { findUser, findPass } = require('./helpers');
 
 const generateRandomString = function() {
   return Math.random().toString(36).substring(2, 8);
@@ -56,26 +57,6 @@ const users = {
     email: "user2@example.com",
     password: "dishwasher-funk",
   },
-};
-
-const findUser = function(input) {
-  let keys = Object.keys(users);
-  for (let key of keys) {
-    if (users[key].email === input) {
-      return users[key];
-    }
-  }
-  return null;
-};
-
-const findPass = function(input) {
-  let keys = Object.keys(users);
-  for (let key of keys) { 
-    if (bcrypt.compareSync(input, users[key].password)) {
-      return users[key];
-    }
-  }
-  return null;
 };
 
 app.get("/", (req, res) => {
@@ -241,8 +222,10 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  let newUser = findUser(req.body.email);
-  let newPass = findPass(req.body.password);
+  let email = req.body.email;
+  let password = req.body.password;
+  let newUser = findUser(email, users);
+  let newPass = findPass(password, users);
   if (!newUser || !newPass) {
     res.statusCode = 403;
     res.send("Invalid Login! Please <a href='/login'>Try Again</a>");
@@ -267,7 +250,7 @@ app.post("/register", (req, res) => {
     res.statusCode = 400;
   } 
   //check if email exists
-  let newUser = findUser(email);
+  let newUser = findUser(email, users);
   //console.log(newUser);
   if (newUser) {
     res.send("User already exists! Please <a href='/register'>Try Again!</a>");
