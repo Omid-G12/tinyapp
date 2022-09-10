@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
 
 const generateRandomString = function() {
@@ -12,7 +13,13 @@ const generateRandomString = function() {
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1'],
+
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 
 const urlDatabase = {
   b6UTxQ: {
@@ -72,7 +79,7 @@ const findPass = function(input) {
 };
 
 app.get("/", (req, res) => {
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
 
   if (!id) {
     res.redirect("/login");
@@ -90,7 +97,7 @@ app.get("/big", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
   if (id) {
     res.redirect("/urls");
   } else {
@@ -102,7 +109,7 @@ app.get("/register", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
 
   const user = users[id];
   if (!user) {
@@ -121,9 +128,9 @@ app.get("/urls", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     const templateVars = { 
-      user: users[req.cookies["user_id"]],
+      user: users[req.session.user_id],
       //urls: urlDatabase
     };
     res.render("urls_new", templateVars);
@@ -135,7 +142,7 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   //console.log(req.body);
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
   if (id) {
     const list = urlsForUser(id);
     const keys = Object.keys(list);
@@ -171,7 +178,7 @@ app.get("/u/:id", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
   if (id) {
     res.redirect("/urls");
   } else {
@@ -184,12 +191,12 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     //console.log(req); // Log the POST request body to the console
     let id = generateRandomString();
     urlDatabase[id] = {
       longURL: req.body.longURL,
-      userID: req.cookies["user_id"],
+      userID: req.session.user_id,
     }
     //console.log(urlDatabase);
     res.redirect("/urls"); // Respond with 'Ok' (we will replace this)
@@ -200,7 +207,7 @@ app.post("/urls", (req, res) => {
 });
 
 app.post("/urls/:id/delete", (req, res) => {
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
   if (id) {
     const list = urlsForUser(id);
     const keys = Object.keys(list);
@@ -218,7 +225,7 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.post("/urls/:id", (req, res) => {
   //console.log(urlDatabase[req.params.id]);
-  const id = req.cookies.user_id;
+  const id = req.session.user_id;
   if (id) {
     const list = urlsForUser(id);
     const keys = Object.keys(list);
@@ -240,13 +247,14 @@ app.post("/login", (req, res) => {
     res.statusCode = 403;
     res.send("Invalid Login! Please <a href='/login'>Try Again</a>");
   }
-  res.cookie('user_id', newUser.id);
+  req.session.user_id = newUser.id;
   res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  const id = req.cookies.user_id;
-  res.clearCookie('user_id', id);
+  const id = req.session.user_id;
+  //res.clearCookie('user_id', id);
+  req.session = null;
   res.redirect("/urls");
 });
 
@@ -273,7 +281,7 @@ app.post("/register", (req, res) => {
     password: hashedPassword,
   };
   //console.log(users[random]);
-  res.cookie('user_id', users[random].id);
+  req.session.user_id = users[random].id;
   res.redirect("/urls");
   //console.log(users);
   }
