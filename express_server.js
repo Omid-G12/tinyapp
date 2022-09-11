@@ -49,7 +49,7 @@ const urlsForUser = function(id) {
 const users = {
   userRandomID: {
     id: "userRandomID",
-    email: "user@example.com",
+    email: "user1@example.com",
     password: "purple-monkey-dinosaur",
   },
   user2RandomID: {
